@@ -44,11 +44,11 @@ Fraud LLM/
 ├── .gitignore                    # Prevents large data files from being tracked
 ├── Dockerfile                    # Containerization config for deployment
 ├── README.md                     # Project documentation (this file)
-├── requirements.txt              # Project library dependencies
-├── features.py                   # Shared feature engineering pipeline (avoids train/serve skew)
-├── train_model.py                # Model training, threshold calibration & artifact serialization
-├── generate_reference_sample.py  # Utility to build lightweight simulation reference sample
-├── app.py                        # Streamlit web app, simulation scheduler, and inference logic
+├── requirements.txt              **# Project library dependencies**
+├── features.py                   **# Shared feature engineering pipeline (avoids train/serve skew)**
+├── train_model.py                **# Model training, threshold calibration & artifact serialization**
+├── generate_reference_sample.py  **# Utility to build lightweight simulation reference sample**
+├── app.py                        **# Streamlit web app, simulation scheduler, and inference logic**
 ├── transactions.db               # Local SQLite database containing simulated audit trail
 ├── streamlit_realtime.png        # Real-time screenshot of running Streamlit app
 ├── xgb_model.pkl                 # [Generated] Trained XGBoost classifier
