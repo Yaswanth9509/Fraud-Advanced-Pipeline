@@ -1,25 +1,31 @@
 """
 app.py
-All-in-one Hugging Face Space app for the fraudTrain/fraudTest schema:
+All-in-one app for the fraudTrain/fraudTest schema, deployed on
+Streamlit Community Cloud with a Neon Postgres backend:
   - Simulates incoming raw transactions (date, location, category, amount...)
   - Runs them through the SAME feature engineering used at training time
   - Runs hybrid inference (XGBoost + Autoencoder ensemble)
-  - Stores results in a local SQLite database
+  - Stores results in Neon Postgres (persists across app sleep/restarts,
+    unlike local SQLite which lives on Streamlit Cloud's ephemeral disk)
   - Renders a live Streamlit dashboard
 
 Run locally:  streamlit run app.py
-Requires the 6 files produced by train_model.py to be in the same folder.
+Requires:
+  - The 6 files produced by train_model.py, in the same folder
+  - A DATABASE_URL secret pointing at a Neon Postgres database
+    (Streamlit Cloud: Settings -> Secrets. Locally: .streamlit/secrets.toml)
 """
 
 import logging
-import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import joblib
 import numpy as np
 import pandas as pd
+import psycopg2
+import psycopg2.extras
 import shap
 import streamlit as st
 import tensorflow as tf
@@ -30,15 +36,31 @@ from features import CATEGORY_VALUES, align_columns, engineer_features
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
-DB_PATH = "transactions.db"
 SIMULATION_INTERVAL_SECONDS = 15
 
 _db_lock = threading.Lock()
 
 
+def get_database_url() -> str:
+    """Reads the Neon connection string from Streamlit secrets."""
+    try:
+        return st.secrets["DATABASE_URL"]
+    except (KeyError, FileNotFoundError):
+        log.error(
+            "DATABASE_URL not found in Streamlit secrets. "
+            "Add it under Settings -> Secrets on Streamlit Cloud, "
+            "or in .streamlit/secrets.toml for local runs."
+        )
+        st.error(
+            "Database not configured. Add DATABASE_URL to Streamlit secrets "
+            "(Settings -> Secrets on Streamlit Cloud)."
+        )
+        st.stop()
+
+
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=10)
+    conn = psycopg2.connect(get_database_url(), connect_timeout=10)
     try:
         yield conn
     finally:
@@ -46,12 +68,12 @@ def get_conn():
 
 
 def init_db():
-    with get_conn() as conn:
-        conn.execute(
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
             """
             CREATE TABLE IF NOT EXISTS transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT DEFAULT (datetime('now')),
+                id SERIAL PRIMARY KEY,
+                ts TIMESTAMP DEFAULT NOW(),
                 amt REAL,
                 category TEXT,
                 xgb_score REAL,
@@ -106,7 +128,7 @@ def generate_raw_transaction(freq_maps: dict) -> tuple:
     base = ref.sample(1).iloc[0].to_dict()
 
     is_anomalous = np.random.rand() < 0.08
-    now = datetime.utcnow() - timedelta(minutes=np.random.randint(0, 120))
+    now = datetime.now(timezone.utc) - timedelta(minutes=np.random.randint(0, 120))
 
     amt = base["amt"]
     merch_lat = base["merch_lat"]
@@ -116,9 +138,14 @@ def generate_raw_transaction(freq_maps: dict) -> tuple:
         amt = base["amt"] * np.random.uniform(8, 25)          # unusually large charge
         merch_lat = base["lat"] + np.random.uniform(-20, 20)   # merchant far from cardholder
         merch_long = base["long"] + np.random.uniform(-20, 20)
-        hour = int(np.random.choice([1, 2, 3, 4]))             # odd hour
+        hour = int(np.random.choice([1, 2, 3, 4]))             # odd hour — part of the anomaly signal
     else:
-        hour = int(np.random.randint(7, 22))
+        # Preserve the real row's own hour instead of assigning a fresh random
+        # one. Overwriting the hour on an otherwise-real row broke the hour/
+        # amount/category correlations the model actually learned, which was
+        # inflating the false-flag rate on "normal" simulated transactions.
+        orig_time = pd.to_datetime(base["trans_date_trans_time"])
+        hour = int(orig_time.hour)
 
     trans_time = now.replace(hour=hour, minute=int(np.random.randint(0, 60)))
 
@@ -167,11 +194,11 @@ def run_inference():
         top_idx = int(np.argmax(np.abs(sv)))
         top_reason = resources["feature_cols"][top_idx] if top_idx < len(resources["feature_cols"]) else "unknown"
 
-        with _db_lock, get_conn() as conn:
-            conn.execute(
+        with _db_lock, get_conn() as conn, conn.cursor() as cur:
+            cur.execute(
                 """INSERT INTO transactions
                    (amt, category, xgb_score, ae_score, ae_threshold, final_flag, top_reason)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
                 (float(amt), str(raw_df["category"].iloc[0]), xgb_prob, ae_error,
                  resources["ae_threshold"], final_flag, top_reason),
             )
@@ -192,7 +219,9 @@ def start_scheduler():
 
 def fetch_recent(limit: int = 50) -> pd.DataFrame:
     with get_conn() as conn:
-        return pd.read_sql(f"SELECT * FROM transactions ORDER BY id DESC LIMIT {limit}", conn)
+        return pd.read_sql(
+            "SELECT * FROM transactions ORDER BY id DESC LIMIT %s", conn, params=(limit,)
+        )
 
 
 # ---------------- App bootstrap ----------------
@@ -216,7 +245,7 @@ col2.metric("Flagged as fraud", int(df["final_flag"].sum()) if len(df) else 0)
 col3.metric("Flag rate", f"{(100 * df['final_flag'].mean()):.1f}%" if len(df) else "—")
 
 st.subheader("Recent transactions")
-st.dataframe(df, use_container_width=True)
+st.dataframe(df, width="stretch")
 
 if len(df) > 1:
     chart_df = df.sort_values("id")

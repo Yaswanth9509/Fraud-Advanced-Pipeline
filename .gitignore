@@ -1,34 +1,15 @@
+# Secrets — never commit real credentials
+.streamlit/secrets.toml
+
+# Large raw data — not needed in the repo, only locally for training
+data/fraudTrain.csv
+data/fraudTest.csv
+
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
+*.pyc
 .venv/
 .venv312/
-venv/
 
-# Local files
+# Local-only artifacts (SQLite is no longer used, but harmless to ignore if present)
 transactions.db
-*.sqlite3
-*.log
-
-# Hugging Face / model artifacts
-# Keep model artifacts in repo if they are needed to run the app.
-# If they become too large, switch to Git LFS or external artifact hosting.
-
-# IDE/editor metadata
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# OS artifacts
-.DS_Store
-Thumbs.db
-
-# Notebook checkpoints
-.ipynb_checkpoints/
-
-# Data files
-data/*.csv

@@ -21,8 +21,8 @@ log = logging.getLogger(__name__)
 TRAIN_PATH = "data/fraudTrain.csv"
 SAMPLE_SIZE = 5000
 KEEP_COLS = [
-    "category", "amt", "gender", "lat", "long", "merch_lat", "merch_long",
-    "dob", "merchant", "city", "state", "job", "zip",
+    "trans_date_trans_time", "category", "amt", "gender", "lat", "long",
+    "merch_lat", "merch_long", "dob", "merchant", "city", "state", "job", "zip",
 ]
 
 
