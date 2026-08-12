@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.venv312/
+venv/
+
+# Local files
+transactions.db
+*.sqlite3
+*.log
+
+# Hugging Face / model artifacts
+# Keep model artifacts in repo if they are needed to run the app.
+# If they become too large, switch to Git LFS or external artifact hosting.
+
+# IDE/editor metadata
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Data files
+data/*.csv

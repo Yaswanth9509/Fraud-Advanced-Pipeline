@@ -1,0 +1,8 @@
+{
+  "xgb_roc_auc": 0.9969265444518979,
+  "autoencoder_roc_auc": 0.7722909269986987,
+  "ae_threshold_percentile": 95.0,
+  "ae_threshold_value": 0.1442989026566946,
+  "n_features": 27,
+  "trained_at": "2026-08-12T03:57:36.288646"
+}
