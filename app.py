@@ -148,6 +148,12 @@ def generate_raw_transaction(freq_maps: dict) -> tuple:
         hour = int(orig_time.hour)
 
     trans_time = now.replace(hour=hour, minute=int(np.random.randint(0, 60)))
+    # Strip timezone info: `now` is tz-aware (correct, avoids the utcnow()
+    # deprecation warning), but `dob` and the rest of the feature pipeline
+    # work with naive timestamps. Mixing the two raises
+    # "Cannot subtract tz-naive and tz-aware datetime-like objects" inside
+    # features.py's age calculation. Keep everything naive for consistency.
+    trans_time = trans_time.replace(tzinfo=None)
 
     row = {
         "trans_date_trans_time": trans_time,
@@ -218,9 +224,12 @@ def start_scheduler():
 
 
 def fetch_recent(limit: int = 50) -> pd.DataFrame:
-    with get_conn() as conn:
+    from sqlalchemy import create_engine, text
+    engine = create_engine(get_database_url())
+    with engine.connect() as conn:
         return pd.read_sql(
-            "SELECT * FROM transactions ORDER BY id DESC LIMIT %s", conn, params=(limit,)
+            text("SELECT * FROM transactions ORDER BY id DESC LIMIT :limit"),
+            conn, params={"limit": limit},
         )
 
 
