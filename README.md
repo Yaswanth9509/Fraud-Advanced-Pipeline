@@ -6,7 +6,7 @@ A hybrid fraud-detection system combining **supervised machine learning** and **
 
 ## 📈 Dashboard Preview
 
-![Streamlit Dashboard Mockup](streamlit_dashboard.png)
+![Streamlit Real-Time Dashboard](streamlit_realtime.png)
 
 ---
 
@@ -50,7 +50,7 @@ Fraud LLM/
 ├── generate_reference_sample.py  # Utility to build lightweight simulation reference sample
 ├── app.py                        # Streamlit web app, simulation scheduler, and inference logic
 ├── transactions.db               # Local SQLite database containing simulated audit trail
-├── streamlit_dashboard.png       # Preview image for repository README
+├── streamlit_realtime.png        # Real-time screenshot of running Streamlit app
 ├── xgb_model.pkl                 # [Generated] Trained XGBoost classifier
 ├── autoencoder_model.keras       # [Generated] Trained Keras Autoencoder model
 ├── scaler.pkl                    # [Generated] StandardScaler for normalizing numeric features
