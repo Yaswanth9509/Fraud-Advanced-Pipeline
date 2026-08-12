@@ -39,7 +39,7 @@ This captures both highly typical fraud profiles and completely new types of ano
 ```text
 Fraud LLM/
 ├── data/
-│   ├── fraudTrain.csv            # [LOCAL ONLY] Kaggle Training Set (~351 MB)
+│   ├── fraudTrain.csv            # [LOCAL ONLY] Kaggle Training Set (~351 MB) Link: https://www.kaggle.com/datasets/kartik2112/fraud-detection
 │   └── fraudTest.csv             # [LOCAL ONLY] Kaggle Test Set (~150 MB)
 ├── .gitignore                    # Prevents large data files from being tracked
 ├── Dockerfile                    # Containerization config for deployment
